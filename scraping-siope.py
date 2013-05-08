@@ -46,8 +46,8 @@ termos_de_busca = {
     '2007': ['18 - ENSINO FUNDAMENTAL'],
     '2008': ['18 - ENSINO FUNDAMENTAL'],
     '2009': ['24 - ENSINO FUNDAMENTAL'],
-    '2010': ['24- ENSINO FUNDAMENTAL', '24.1- Despesas Custeadas']
-    '2011': ['24- ENSINO FUNDAMENTAL', '24.1- Despesas Custeadas']
+    '2010': ['24- ENSINO FUNDAMENTAL', '24.1- Despesas Custeadas'],
+    '2011': ['24- ENSINO FUNDAMENTAL', '24.1- Despesas Custeadas'],
     '2012': ['24- ENSINO FUNDAMENTAL', '24.1- Despesas Custeadas']
 }
 
@@ -58,19 +58,23 @@ def monta_lista_cidades():
     # Busca a lista de municipios de cada estado e acrescenta na lista ufs
     for uf in ufs:
         municipios = []
-        data = parse.urlencode({'cod_uf': uf[0]})
-        binary_data = data.encode('utf-8')
-        page = request.urlopen(siope_url, binary_data)
-        soup = BeautifulSoup(page.read())
-        a = soup.find('select', {"name": 'municipios'})
+        parametros = {'acao': 'pesquisar',
+                    'pag': 'result',
+                    'periodos': periodo,
+                    'anos': '2012',
+                    'cod_uf': uf[0]}
 
-        for i in a.findAll('option'):
-            municipios.append((i['value'], i.text.replace('\r\n', "").strip()))
+        with request.urlopen(siope_url, parse.urlencode(parametros).encode('utf-8')) as resposta:
+            soup = BeautifulSoup(resposta.read(), 'lxml')
+            a = soup.find('select', {'name': 'municipios'})
 
-        uf.append(municipios)
+            for i in a.findAll('option'):
+                municipios.append((i['value'], i.text.replace('\r\n', '').strip()))
+
+            uf.append(municipios)
 
 def analisa_siope_pdf(ano, uf, cod_uf, municipio, cod_municipio):
-    arquivo = os.path.join("arquivos", ano, cod_uf, cod_municipio + ".pdf")
+    arquivo = os.path.join('arquivos', ano, cod_uf, cod_municipio + '.pdf')
 
     if not os.path.exists(os.path.dirname(arquivo)):
         os.makedirs(os.path.dirname(arquivo))
@@ -84,7 +88,7 @@ def analisa_siope_pdf(ano, uf, cod_uf, municipio, cod_municipio):
     #Quando o arquivo correspondente ao municipio e ano não existe, o FTP devolve um erro de permissao de acesso
     #(um exemplo é São Paulo - SP - 2012)
     except TypeError:
-        return("%s\t%s [%s]\t%s [%s]\n" % (ano, uf, cod_uf, municipio, cod_municipio))
+        return('%s\t%s [%s]\t%s [%s]\n' % (ano, uf, cod_uf, municipio, cod_municipio))
 
     #Parsing do PDF. Um horror.
     with open(arquivo, mode="rb") as f:
@@ -102,7 +106,7 @@ def analisa_siope_pdf(ano, uf, cod_uf, municipio, cod_municipio):
         atualizada = valores[1]
         realizada = valores[-2]
 
-        return("%s\t%s [%s]\t%s [%s]\t%s\t%s\n" % (ano, uf, cod_uf, municipio, cod_municipio, atualizada, realizada))
+        return('%s\t%s [%s]\t%s [%s]\t%s\t%s\n' % (ano, uf, cod_uf, municipio, cod_municipio, atualizada, realizada))
 
 def analisa_siope_html(ano, uf, cod_uf, municipio, cod_municipio):
     parametros = {'acao': 'pesquisar',
@@ -127,14 +131,14 @@ def analisa_siope_html(ano, uf, cod_uf, municipio, cod_municipio):
         atualizada = colunas[2].findChild().text
         realizada = colunas[4].findChild().text
 
-        return("%s\t%s [%s]\t%s [%s]\t%s\t%s\n" % (ano, uf, cod_uf, municipio, cod_municipio, atualizada, realizada))
+        return('%s\t%s [%s]\t%s [%s]\t%s\t%s\n' % (ano, uf, cod_uf, municipio, cod_municipio, atualizada, realizada))
 
     #Se a operação de busca da linha alvo falhar (porque o município não existe, por exemplo),
     #a condição abaixo é executada
     except AttributeError:
-        return("%s\t%s [%s]\t%s [%s]\n" % (ano, uf, cod_uf, municipio, cod_municipio))
+        return('%s\t%s [%s]\t%s [%s]\n' % (ano, uf, cod_uf, municipio, cod_municipio))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     monta_lista_cidades()
 
     for ano in anos:
@@ -145,5 +149,5 @@ if __name__ == "__main__":
                 else:
                     nova_entrada = analisa_siope_pdf(ano, uf, cod_uf, municipio, cod_municipio)
 
-                with open("saida.txt", encoding='utf-8', mode="a") as saida:
+                with open('saida.txt', encoding='utf-8', mode='a') as saida:
                     saida.write(nova_entrada)
